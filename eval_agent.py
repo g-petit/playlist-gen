@@ -5,13 +5,16 @@ from main import run_agent, DEFAULT_SYSTEM_PROMPT, DEFAULT_MODEL
 def task(input: dict, hooks):
     user_input = input.get("user_request")
     parameters = hooks.parameters if hooks else {}
-    system_prompt = parameters.get("system_prompt") if parameters else None
-    llm_model = parameters.get("llm_model") if parameters else None
-    return run_agent(
-        user_input,
-        system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT,
-        llm_model if llm_model else DEFAULT_MODEL,
-    )
+
+    def get_param(key, default):
+        val = (parameters or {}).get(key)
+        # Playground passes plain strings; standard eval injects raw schema dicts —
+        # only use the value if it's actually a string
+        return val if isinstance(val, str) and val else default
+
+    system_prompt = get_param("system_prompt", DEFAULT_SYSTEM_PROMPT)
+    llm_model = get_param("llm_model", DEFAULT_MODEL)
+    return run_agent(user_input, system_prompt, llm_model)
 
 variety_scorer = LLMClassifier(
     name="Variety",
@@ -40,4 +43,16 @@ Eval(
     task=task,
     data=init_dataset(project="PlaylistGenerator", name="InputExamples"),
     scores=[variety_scorer, playlist_length_scorer],
+    parameters={
+        "system_prompt": {
+            "type": "string",
+            "description": "System prompt for the playlist agent",
+            "default": DEFAULT_SYSTEM_PROMPT,
+        },
+        "llm_model": {
+            "type": "string",
+            "description": "Model to use (e.g. claude-haiku-4-5, gpt-4o-mini)",
+            "default": DEFAULT_MODEL,
+        },
+    },
 )
