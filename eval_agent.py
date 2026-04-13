@@ -15,11 +15,11 @@ def task(input: dict, hooks):
     user_input = input.get("user_request")
     parameters = hooks.parameters if hooks else {}
     system_prompt = parameters.get("system_prompt") if parameters else None
-    model = parameters.get("model") if parameters else None
+    llm_model = parameters.get("llm_model") if parameters else None
     return run_agent(
         user_input,
         system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT,
-        model if model else DEFAULT_MODEL,
+        llm_model if llm_model else DEFAULT_MODEL,
     )
 
 variety_scorer = LLMClassifier(
@@ -51,6 +51,6 @@ Eval(
     scores=[variety_scorer, playlist_length_scorer],
     parameters={
         "system_prompt": SystemPromptParam,
-        "model": ModelParam,
+        "llm_model": ModelParam,
     },
 )
