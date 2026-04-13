@@ -1,14 +1,22 @@
 import json
+import os
+import braintrust
+from braintrust import traced
 from openai import OpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
 load_dotenv()
 
-#TODO instrument this code with tracing. You'll want to wrap the LLM client to gain model iputs/outputs and metrics and also trace the various functions and tools called by the agent
-#HINT: Don't forget to initialize a Braintrust logger
+# Initialize the Braintrust logger — this is what sends traces to your project
+logger = braintrust.init_logger(project="PlaylistGenerator")
 
-client = OpenAI()
+# Wrapping the client means every LLM call is automatically traced:
+# inputs, outputs, token counts, latency — no extra code needed per call
+client = braintrust.wrap_openai(OpenAI(
+    base_url="https://api.braintrust.dev/v1/proxy",
+    api_key=os.environ["BRAINTRUST_API_KEY"],
+))
 
 class Song(BaseModel):
     title: str
@@ -139,6 +147,7 @@ TOOLS = [
 ]
 
 
+@traced
 def search_songs(genre: str = None, mood: str = None) -> list[dict]:
     """Search the catalog by genre and/or mood."""
     results = MUSIC_CATALOG
@@ -149,6 +158,7 @@ def search_songs(genre: str = None, mood: str = None) -> list[dict]:
     return [{"id": s["id"], "title": s["title"], "artist": s["artist"]} for s in results]
 
 
+@traced
 def get_song_details(song_id: str) -> dict | None:
     """Get full details for a song by ID."""
     for song in MUSIC_CATALOG:
@@ -157,6 +167,7 @@ def get_song_details(song_id: str) -> dict | None:
     return None
 
 
+@traced
 def create_playlist(name: str, song_ids: list[str]) -> dict:
     """Create a playlist with the given songs."""
     songs = []
@@ -189,7 +200,11 @@ def handle_tool_call(tool_name: str, arguments: dict) -> str:
     return json.dumps(result)
 
 
-def run_agent(user_request: str) -> AgentResult:
+DEFAULT_SYSTEM_PROMPT = "You are a helpful music assistant that creates playlists. Use the available tools to search for songs and create playlists based on user requests. Always search for songs first, then create a playlist with your selections. Keep playlists under 30 minutes total duration."
+DEFAULT_MODEL = "claude-haiku-4-5"
+
+@traced
+def run_agent(user_request: str, system_prompt: str = DEFAULT_SYSTEM_PROMPT, model: str = DEFAULT_MODEL) -> AgentResult:
     """Run the playlist agent with the given user request."""
     print(f"\n{'='*50}")
     print(f"User Request: {user_request}")
@@ -197,18 +212,17 @@ def run_agent(user_request: str) -> AgentResult:
 
     result = AgentResult()
 
-#TODO You may want to show how you can tweak this prompt as you improve your application. Making the prompt parameterizable would also allow you to run remote evals from the UI
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful music assistant that creates playlists. Use the available tools to search for songs and create playlists based on user requests. Always search for songs first, then create a playlist with your selections.",
+            "content": system_prompt,
         },
         {"role": "user", "content": user_request},
     ]
 
     while True:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=messages,
             tools=TOOLS,
         )
