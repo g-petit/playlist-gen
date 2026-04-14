@@ -200,8 +200,8 @@ def handle_tool_call(tool_name: str, arguments: dict) -> str:
     return json.dumps(result)
 
 
-DEFAULT_SYSTEM_PROMPT = "You are a helpful music assistant that creates playlists. Use the available tools to search for songs and create playlists based on user requests. Always search for songs first, then create a playlist with your selections. Keep playlists under 30 minutes total duration."
-DEFAULT_MODEL = "claude-haiku-4-5"
+DEFAULT_SYSTEM_PROMPT = "You are a helpful music assistant that creates playlists. Use the available tools to search for songs and create playlists based on user requests. Always search for songs first, then create a playlist with your selections. Create comprehensive playlists with 8-10 songs to give users a full listening experience."
+DEFAULT_MODEL = "gpt-4o-mini"
 
 @traced
 def run_agent(user_request: str, system_prompt: str = DEFAULT_SYSTEM_PROMPT, model: str = DEFAULT_MODEL) -> AgentResult:
