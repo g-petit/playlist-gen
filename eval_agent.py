@@ -1,6 +1,13 @@
 from autoevals import LLMClassifier
 from braintrust import Eval, init_dataset, Score
+from pydantic import BaseModel, Field
 from main import run_agent, DEFAULT_SYSTEM_PROMPT, DEFAULT_MODEL
+
+class SystemPromptParam(BaseModel):
+    value: str = Field(default=DEFAULT_SYSTEM_PROMPT, description="System prompt for the playlist agent")
+
+class ModelParam(BaseModel):
+    value: str = Field(default=DEFAULT_MODEL, description="Model to use (e.g. claude-haiku-4-5, gpt-4o-mini)")
 
 def task(input: dict, hooks):
     user_input = input.get("user_request")
@@ -44,15 +51,7 @@ Eval(
     data=init_dataset(project="PlaylistGenerator", name="InputExamples"),
     scores=[variety_scorer, playlist_length_scorer],
     parameters={
-        "system_prompt": {
-            "type": "string",
-            "description": "System prompt for the playlist agent",
-            "default": DEFAULT_SYSTEM_PROMPT,
-        },
-        "llm_model": {
-            "type": "string",
-            "description": "Model to use (e.g. claude-haiku-4-5, gpt-4o-mini)",
-            "default": DEFAULT_MODEL,
-        },
+        "system_prompt": SystemPromptParam,
+        "llm_model": ModelParam,
     },
 )
